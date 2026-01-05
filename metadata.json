@@ -1,0 +1,7 @@
+{
+  "name": "星命导航员 - AI 命理 Agent",
+  "description": "基于 Gemini AI 的个人运势与缘分测算专家，为你拨开命运的迷雾。",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
