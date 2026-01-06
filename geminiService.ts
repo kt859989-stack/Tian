@@ -4,113 +4,119 @@ import { UserInfo, FortuneResult, CompatibilityResult } from "./types";
 
 const getAIClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2): Promise<T> => {
-  try {
-    return await fn();
-  } catch (error: any) {
-    if (error?.message?.includes('429')) {
-      throw new Error("大海贼时代访客过多（API频率限制），请稍候再拨！");
-    }
-    if (retries <= 0) throw error;
-    await new Promise(res => setTimeout(res, 2000));
-    return retryWithBackoff(fn, retries - 1);
-  }
-};
-
 export const speakProphecy = async (text: string) => {
-  return retryWithBackoff(async () => {
-    const ai = getAIClient();
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `请用一位像《海贼王》雷利那样豪迈智慧的老海贼语气，朗读这段话：${text}` }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } },
-        },
+  const ai = getAIClient();
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-tts",
+    contents: [{ parts: [{ text: `请用一位慈祥、专业的周易老大师语气读出这段开示：${text}` }] }],
+    config: {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } },
       },
-    });
-    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    },
   });
+  return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 };
 
-export const generateWantedImage = async (promptText: string) => {
-  return retryWithBackoff(async () => {
-    const ai = getAIClient();
+export const generateDestinyImage = async (prompt: string) => {
+  const ai = getAIClient();
+  try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
-        parts: [{ text: `One Piece anime wanted poster style, high quality illustration, hand-drawn look, vibrant colors, bounty poster aesthetic, representing: ${promptText}. Epic lighting.` }]
+        parts: [{ text: `Traditional Chinese ink wash painting, Zen style, spiritual and ethereal: ${prompt}` }]
       },
-      config: { imageConfig: { aspectRatio: "3:4" } }
+      config: { imageConfig: { aspectRatio: "1:1" } }
     });
-    const part = response.candidates?.[0].content.parts.find(p => p.inlineData);
-    return part ? `data:image/png;base64,${part.inlineData.data}` : null;
-  });
+    const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+    return part?.inlineData ? `data:image/png;base64,${part.inlineData.data}` : null;
+  } catch (e) {
+    return null;
+  }
 };
 
-export const getDailyFortune = async (info: UserInfo, targetDate: string): Promise<FortuneResult & { imageUrl?: string }> => {
-  return retryWithBackoff(async () => {
-    const ai = getAIClient();
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `分析海贼角色'${info.name}'在${targetDate}的航海运势。`,
-      config: {
-        systemInstruction: `
-        1. 必须使用海贼王(One Piece)热血动漫风格。
-        2. todo(宜)和notodo(忌)的内容必须逻辑互斥（宜的内容绝对不能出现在忌里）。
-        3. 宜/忌各3项，每项严格限制在4-8个汉字。
-        4. score必须是1-100之间的纯整数，严禁输出分数或百分比。
-        5. insight是详批，字数约300，像雷利在酒馆里对新人海贼的告诫。`,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["bazi", "summary", "score", "todo", "notodo", "insight", "imagePrompt"],
-          properties: {
-            bazi: { type: Type.STRING },
-            summary: { type: Type.STRING },
-            score: { type: Type.INTEGER },
-            todo: { type: Type.ARRAY, items: { type: Type.STRING } },
-            notodo: { type: Type.ARRAY, items: { type: Type.STRING } },
-            insight: { type: Type.STRING },
-            imagePrompt: { type: Type.STRING }
-          }
-        }
-      }
-    });
-    const data = JSON.parse(response.text || '{}');
-    const imageUrl = await generateWantedImage(data.imagePrompt || "Grand Line Adventure").catch(() => null);
-    return { ...data, imageUrl };
-  });
+const formatUserInfo = (u: UserInfo) => {
+  return `姓名：${u.name}，性别：${u.gender}，出生日期：${u.birthDate}，出生时分：${u.birthTime || '未知'}，出生地点：${u.birthPlace}`;
 };
 
-export const getCompatibility = async (u1: UserInfo, u2: UserInfo): Promise<CompatibilityResult & { imageUrl?: string }> => {
-  return retryWithBackoff(async () => {
-    const ai = getAIClient();
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `分析海贼伙伴'${u1.name}'与'${u2.name}'的灵魂羁绊。`,
-      config: {
-        systemInstruction: `风格：海贼王伙伴羁绊。score为1-100整数。宜/忌各3项，每项4-8字。`,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["score", "matchAnalysis", "todo", "notodo", "dynamic"],
-          properties: {
-            score: { type: Type.INTEGER },
-            baziA: { type: Type.STRING },
-            baziB: { type: Type.STRING },
-            matchAnalysis: { type: Type.STRING },
-            dynamic: { type: Type.STRING },
-            todo: { type: Type.ARRAY, items: { type: Type.STRING } },
-            notodo: { type: Type.ARRAY, items: { type: Type.STRING } },
-            imagePrompt: { type: Type.STRING }
-          }
+export const getDailyFortune = async (info: UserInfo, date: string): Promise<FortuneResult> => {
+  const ai = getAIClient();
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `请根据以下信息进行今日（${date}）命理推演：${formatUserInfo(info)}。`,
+    config: {
+      systemInstruction: "你是一位精通子平八字与梅花易数的AI命理大师。请根据用户的出生地、时分（若有）推算当日运势。请以JSON格式返回。",
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        required: ["bazi", "summary", "score", "todo", "notodo", "insight", "imagePrompt"],
+        properties: {
+          bazi: { type: Type.STRING, description: "生辰八字排盘" },
+          summary: { type: Type.STRING, description: "今日气运总评（4字）" },
+          score: { type: Type.INTEGER, description: "运势分数 0-100" },
+          todo: { type: Type.ARRAY, items: { type: Type.STRING }, description: "今日宜" },
+          notodo: { type: Type.ARRAY, items: { type: Type.STRING }, description: "今日忌" },
+          insight: { type: Type.STRING, description: "大师开示" },
+          imagePrompt: { type: Type.STRING, description: "意象描述，用于绘图" }
         }
       }
-    });
-    const data = JSON.parse(response.text || '{}');
-    const imageUrl = await generateWantedImage(data.imagePrompt || "Pirate Alliance").catch(() => null);
-    return { ...data, imageUrl };
+    }
   });
+  const data = JSON.parse(response.text || '{}');
+  const imageUrl = await generateDestinyImage(data.imagePrompt);
+  return { ...data, imageUrl };
 };
+
+export const getCompatibility = async (u1: UserInfo, u2: UserInfo): Promise<CompatibilityResult> => {
+  const ai = getAIClient();
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `请测算缘主 A：${formatUserInfo(u1)} 与 缘主 B：${formatUserInfo(u2)} 的缘分合婚。`,
+    config: {
+      systemInstruction: "你是一位专业的合婚大师。基于两人的生辰八字、地理方位进行深度匹配分析。请以JSON格式返回。",
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        required: ["score", "matchAnalysis", "dynamic", "todo", "notodo", "imagePrompt"],
+        properties: {
+          score: { type: Type.INTEGER, description: "匹配度 0-100" },
+          matchAnalysis: { type: Type.STRING, description: "缘分详批" },
+          dynamic: { type: Type.STRING, description: "关系走向（4字）" },
+          todo: { type: Type.ARRAY, items: { type: Type.STRING } },
+          notodo: { type: Type.ARRAY, items: { type: Type.STRING } },
+          imagePrompt: { type: Type.STRING }
+        }
+      }
+    }
+  });
+  const data = JSON.parse(response.text || '{}');
+  const imageUrl = await generateDestinyImage(data.imagePrompt);
+  return { ...data, imageUrl };
+};
+
+// PCM 处理
+export function encodePCM(data: Float32Array): string {
+  const l = data.length;
+  const int16 = new Int16Array(l);
+  for (let i = 0; i < l; i++) int16[i] = data[i] * 32768;
+  let binary = '';
+  const bytes = new Uint8Array(int16.buffer);
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+export function decodePCM(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+  return bytes;
+}
+
+export async function convertPCMToBuffer(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const buffer = ctx.createBuffer(1, dataInt16.length, 24000);
+  const channelData = buffer.getChannelData(0);
+  for (let i = 0; i < dataInt16.length; i++) channelData[i] = dataInt16[i] / 32768.0;
+  return buffer;
+}

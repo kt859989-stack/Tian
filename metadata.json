@@ -1,7 +1,7 @@
 {
-  "name": "星命导航员 - AI 命理 Agent",
-  "description": "基于 Gemini AI 的个人运势与缘分测算专家，为你拨开命运的迷雾。",
+  "name": "天机算 - AI 命理演算 Agent",
+  "description": "基于 AI 的中式传统命理演算系统，支持八字推演与实时语音连线。",
   "requestFramePermissions": [
-    "geolocation"
+    "microphone"
   ]
 }

@@ -4,24 +4,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grand Line Fortune - 海贼命理 Agent</title>
+    <title>天机算 - AI 命理演算 Agent</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Noto+Sans+SC:wght@400;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;900&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --paper: #fdf5e6;
+        --ink: #2c2c2c;
+        --vermilion: #a61b1f;
+        --gold: #d4af37;
+      }
       body {
-        font-family: 'Noto Sans SC', sans-serif;
-        background-color: #f4e4bc;
-        background-image: url('https://www.transparenttextures.com/patterns/rebel-pinstripe.png');
+        font-family: 'Noto Serif SC', serif;
+        background-color: var(--paper);
+        background-image: url('https://www.transparenttextures.com/patterns/paper-fibers.png');
+        color: var(--ink);
+        min-height: 100vh;
+        overflow-x: hidden;
       }
-      .marker-font {
-        font-family: 'Permanent+Marker', cursive;
+      .title-font {
+        font-family: 'Ma Shan Zheng', cursive;
       }
-      input, select {
+      .chinese-card {
+        background: rgba(255, 255, 255, 0.7);
+        border: 2px solid var(--ink);
+        position: relative;
+        box-shadow: 12px 12px 0px var(--ink);
+      }
+      .action-btn {
+        background: var(--vermilion);
+        color: white;
+        border: 2px solid var(--ink);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        font-weight: 900;
+        cursor: pointer;
+      }
+      .action-btn:hover {
+        background: var(--ink);
+        transform: translate(-3px, -3px);
+        box-shadow: 6px 6px 0px var(--gold);
+      }
+      .gold-text {
+        color: var(--gold);
+        text-shadow: 2px 2px 0px var(--ink);
+      }
+      input, select, textarea {
+        background: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid var(--ink) !important;
+        border-radius: 0 !important;
         outline: none;
       }
       input:focus {
-        background-color: white !important;
+        border-width: 2px !important;
+        box-shadow: 4px 4px 0px rgba(0,0,0,0.05);
+      }
+      .scroll-bg {
+        background: linear-gradient(to right, #e0d5c1 0%, #fdf5e6 12%, #fdf5e6 88%, #e0d5c1 100%);
+      }
+      @keyframes spin-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      .animate-spin-slow {
+        animation: spin-slow 12s linear infinite;
       }
     </style>
     <script type="importmap">
